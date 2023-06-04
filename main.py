@@ -69,7 +69,6 @@ async def handle_service_choice(message: types.Message, state: FSMContext):
         await message.answer('Пожалуйста, укажите тему работы')
     elif text == '3':
         await message.answer('Вы выбрали прочие услуги')
-        # здесь можно добавить обработку выбора прочих услуг
     else:
         await message.answer('Неправильный выбор услуги')
 
