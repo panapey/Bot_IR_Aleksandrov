@@ -7,11 +7,9 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 logging.basicConfig(level=logging.INFO)
-
 bot = Bot(token='TOKEN')
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
-
 server = 'SERVER'
 database = 'DATABASE'
 cnxn = pyodbc.connect(
@@ -21,7 +19,10 @@ cursor = cnxn.cursor()
 
 class Form(StatesGroup):
     category = State()
+    service = State()
     auth = State()
+    theme = State()
+    task = State()
 
 
 @dp.message_handler(commands=['start'])
@@ -36,7 +37,9 @@ async def handle_category(message: types.Message, state: FSMContext):
     if text == '1':
         # обработка выбора категории "Клиент"
         await message.answer('Вы выбрали категорию "Клиент"')
-        await state.finish()
+        await state.update_data(category='client')
+        await Form.next()
+        await message.answer('Выберите услугу: 1 - Курсовая работа, 2 - Дипломная работа, 3 - Прочие услуги')
     elif text == '2':
         # обработка выбора категории "Менеджер"
         await message.answer('Вы выбрали категорию "Менеджер"')
@@ -51,6 +54,42 @@ async def handle_category(message: types.Message, state: FSMContext):
         await message.answer('Введите логин и пароль')
     else:
         await message.answer('Неправильный выбор категории')
+
+
+@dp.message_handler(state=Form.service)
+async def handle_service_choice(message: types.Message, state: FSMContext):
+    text = message.text
+    if text == '1':
+        await message.answer('Вы выбрали курсовую работу')
+        await state.set_state(Form.theme)
+        await message.answer('Пожалуйста, укажите тему работы')
+    elif text == '2':
+        await message.answer('Вы выбрали дипломную работу')
+        await state.set_state(Form.theme)
+        await message.answer('Пожалуйста, укажите тему работы')
+    elif text == '3':
+        await message.answer('Вы выбрали прочие услуги')
+        # здесь можно добавить обработку выбора прочих услуг
+    else:
+        await message.answer('Неправильный выбор услуги')
+
+
+
+@dp.message_handler(state=Form.theme)
+async def handle_theme_and_task(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    theme = data.get('theme')
+    if theme is None:
+        # обработка темы работы
+        theme = message.text
+        await state.update_data(theme=theme)
+        await message.answer('Пожалуйста, укажите техническое задание')
+    else:
+        # обработка технического задания
+        task = message.text
+        await state.update_data(task=task)
+        await message.answer(f'Тема работы: {theme}\nТехническое задание: {task}')
+
 
 @dp.message_handler(state=Form.auth)
 async def handle_auth(message: types.Message, state: FSMContext):
@@ -71,7 +110,6 @@ async def handle_auth(message: types.Message, state: FSMContext):
             else:
                 await message.answer(f'Успешная авторизация как {category}!')
             await state.finish()
-
 
 
 if __name__ == '__main__':
